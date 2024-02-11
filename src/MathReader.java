@@ -72,14 +72,15 @@ public abstract class MathReader {
      * @param input the string to interpret as a mathematical expression as a list e.g.
      *  -> ["s", "i", "n", "(", "5.32", "+", "67", ")", "/", "l", "o", "g", "-2"].
      * @param errorLog a list for recording any errors encountered while attempting to interpret the string.
-     * @param mostRecentAnswer the answer to the previously entered expression, empty if there is no such expression.
+     * @param constants a map of all named constants. Note user defined constants are upper case letters and are named,
+     *  but may be keyed to empty optionals.
      * @return a list of components representing the expression that was interpreted, or an empty optional if errors
      *  were encountered. From the above example, this method would return
      *  -> ["sin", "(", "5.32", "+", "67", ")", "/", "log", "-2"]
      */
     public static Optional<List<String>> readExpression(List<String> input,
                                                         List<String> errorLog,
-                                                        Optional<Double> mostRecentAnswer) {
+                                                        Map<String, Optional<Double>> constants) {
         List<String> currentWorkingSection = new ArrayList<>();
         List<String> formattedExpression = new ArrayList<>();
 
@@ -97,7 +98,7 @@ public abstract class MathReader {
                 Integer.parseInt(component);
 
                 if (!currentWorkingSection.isEmpty() && !currentSectionIsNumber) {
-                    appendCommand(formattedExpression, currentWorkingSection, errorLog, mostRecentAnswer);
+                    appendCommand(formattedExpression, currentWorkingSection, errorLog, constants);
                     currentWorkingSection.clear();
                 }
 
@@ -120,7 +121,7 @@ public abstract class MathReader {
                 appendNumber(formattedExpression,
                         Double.parseDouble(String.join("", currentWorkingSection)));
             } else {
-                appendCommand(formattedExpression, currentWorkingSection, errorLog, mostRecentAnswer);
+                appendCommand(formattedExpression, currentWorkingSection, errorLog, constants);
             }
         }
 
@@ -171,21 +172,27 @@ public abstract class MathReader {
      *  them for the numbers they represent.
      * @param partiallyFormattedExpression the formatted expression so far, to append the command(s) to.
      * @param input the command(s) to append.
-     * @param mostRecentAnswer the answer to the previously entered expression, empty if there is no such expression.
+     * @param constants a map of all named constants. Note user defined constants are upper case letters and are named,
+     *  but may be keyed to empty optionals.
      * @param errorLog a list for recording any errors encountered while attempting to interpret the command(s).
      */
     private static void appendCommand(List<String> partiallyFormattedExpression,
                                       List<String> input,
                                       List<String> errorLog,
-                                      Optional<Double> mostRecentAnswer) {
+                                      Map<String, Optional<Double>> constants) {
         List<String> command = new ArrayList<>();
 
         for (String component : input) {
-            // Check for e.
-            if (component.equals("e") && command.isEmpty()) {
-                appendNumber(partiallyFormattedExpression, Math.E);
+            // Check for single letter constants. Note we have to check the command is currently empty because of e,
+            // which can also be found in function names such as secant. User defined constants are upper case letters.
+            if (constants.containsKey(component) && command.isEmpty()) {
+                if (constants.get(component).isPresent()) {
+                    appendNumber(partiallyFormattedExpression, Math.E);
 
-                continue;
+                    continue;
+                } else {
+                    errorLog.add(String.format("Undefined constant: %s", component));
+                }
             }
 
             // Check for brackets.
@@ -202,20 +209,13 @@ public abstract class MathReader {
 
             command.add(component);
 
-            // Check for pi.
-            if (String.join("", command).equals("pi")) {
-                appendNumber(partiallyFormattedExpression, Math.PI);
-                command.clear();
-
-                continue;
-            }
-
-            // Check for ans.
-            if (String.join("", command).equals("ans")) {
-                if (mostRecentAnswer.isPresent()) {
-                    appendNumber(partiallyFormattedExpression, mostRecentAnswer.get());
+            // Check for pi and ans.
+            if (constants.containsKey(String.join("", command)) && command.size() >= 2) {
+                if (constants.get(String.join("", command)).isPresent()) {
+                    appendNumber(partiallyFormattedExpression, constants.get(String.join("", command)).get());
                 } else {
-                    errorLog.add("No calculator history found for ans command");
+                    // Note pi is always defined so will not return an empty optional.
+                    errorLog.add("No calculator history found for ans");
                 }
 
                 command.clear();

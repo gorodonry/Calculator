@@ -6,10 +6,12 @@ import static java.util.Map.entry;
  * A calculator program.
  */
 public class Calculator {
+    static final char[] USER_DEFINABLE_CONSTANTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
     boolean running = true;
     String currentExpression;
     List<String> expressionErrorMessages = new ArrayList<>();
     List<Query> history = new ArrayList<>();
+    Map<String, Optional<Double>> constants = new HashMap<>();
 
     Scanner reader;
 
@@ -18,6 +20,16 @@ public class Calculator {
      */
     public void initialise() {
         reader = new Scanner(System.in);
+
+        // Initialise user-defined constants as empty optionals.
+        for (char constant : USER_DEFINABLE_CONSTANTS) {
+            constants.put(String.valueOf(constant), Optional.empty());
+        }
+
+        constants.put("ans", Optional.empty());
+        constants.put("e", Optional.of(Math.E));
+        constants.put("pi", Optional.of(Math.PI));
+
         runCalculator();
     }
 
@@ -49,6 +61,7 @@ public class Calculator {
                 if (result.successful()) {
                     System.out.printf(" -> %f%n", result.result());
                     history.add(new Query(currentExpression, result.result()));
+                    constants.put("ans", Optional.of(result.result()));
                 } else {
                     if (result.errorMessage() != null) {
                         expressionErrorMessages.add(result.errorMessage());
@@ -283,7 +296,7 @@ public class Calculator {
      */
     public Optional<List<String>> readExpression() {
         System.out.print("Expression: ");
-        currentExpression = reader.nextLine().trim().toLowerCase();
+        currentExpression = reader.nextLine().trim();
 
         if (currentExpression.equals("q")) {
             running = false;
@@ -306,18 +319,12 @@ public class Calculator {
             return Optional.empty();
         }
 
-        Optional<Double> mostRecentAnswer = Optional.empty();
-
-        if (!history.isEmpty()) {
-            mostRecentAnswer = Optional.of(history.getLast().answer());
-        }
-
         return MathReader.readExpression(currentExpression.chars()
                 .mapToObj(c -> String.format("%c", (char)c))
                 .filter(s -> !s.equals(" "))
                 .collect(Collectors.toList()),
                 expressionErrorMessages,
-                mostRecentAnswer);
+                constants);
     }
 
     public static void main(String[] args) {
