@@ -8,7 +8,7 @@ public abstract class CMath {
     /**
      * A map of operations keyed to the order they occur in (BEDMAS).
      */
-    public static Map<String, OperationOrder> OPERATION_ORDERS = Map.ofEntries(
+    public static final Map<String, OperationOrder> OPERATION_ORDERS = Map.ofEntries(
             Map.entry("+", OperationOrder.ADDITION_SUBTRACTION),
             Map.entry("-", OperationOrder.ADDITION_SUBTRACTION),
             Map.entry("*", OperationOrder.DIVISION_MULTIPLICATION),
@@ -23,6 +23,21 @@ public abstract class CMath {
             Map.entry("sec", OperationOrder.BRACKETS_FUNCTIONS),
             Map.entry("cot", OperationOrder.BRACKETS_FUNCTIONS)
     );
+
+    /**
+     * Accuracy threshold for comparing doubles.
+     */
+    public static final double EPSILON = 0.000001;
+
+    /**
+     * Compares two doubles using a threshold accuracy value.
+     * @param d1 the first double to compare.
+     * @param d2 the second double to compare.
+     * @return true if the absolute difference between the doubles is negligible, false otherwise.
+     */
+    public static boolean compareDouble(double d1, double d2) {
+        return Math.abs(d1 - d2) < EPSILON;
+    }
 
     /**
      * Adds all the elements of the given list together.

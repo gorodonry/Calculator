@@ -70,6 +70,49 @@ public class Calculator {
      * Runs the calculator solver with the current saved expression.
      */
     public void runCalculator() {
+        if (currentExpression.contains("=")) {
+            if (currentExpression.chars().filter(c -> c == '=').count() > 1) {
+                expressionErrorMessages.add("More than one equals sign entered");
+                reportErrors("interpret");
+
+                return;
+            }
+
+            Optional<List<String>> leftHandSide = MathReader.readExpression(currentExpression.split("=")[0]
+                            .chars()
+                            .mapToObj(c -> String.valueOf((char)c))
+                            .collect(Collectors.toList()),
+                    expressionErrorMessages,
+                    constants);
+
+            Optional<List<String>> rightHandSide = MathReader.readExpression(currentExpression.split("=")[1]
+                            .chars()
+                            .mapToObj(c -> String.valueOf((char)c))
+                            .collect(Collectors.toList()),
+                    expressionErrorMessages,
+                    constants);
+
+            Result leftHandResult = evaluate(leftHandSide.orElseGet(ArrayList::new));
+            Result rightHandResult = evaluate(rightHandSide.orElseGet(ArrayList::new));
+
+            if (leftHandResult.successful() && rightHandResult.successful()) {
+                System.out.printf(" -> %s%n",
+                        CMath.compareDouble(leftHandResult.result().get(), rightHandResult.result().get()));
+            } else {
+                if (leftHandResult.errorMessage().isPresent()) {
+                    expressionErrorMessages.add(leftHandResult.errorMessage().get());
+                }
+
+                if (rightHandResult.errorMessage().isPresent()) {
+                    expressionErrorMessages.add(rightHandResult.errorMessage().get());
+                }
+
+                reportErrors("solve");
+            }
+
+            return;
+        }
+
         Optional<List<String>> interpretedExpression = MathReader.readExpression(currentExpression.chars()
                 .mapToObj(c -> String.valueOf((char)c))
                 .collect(Collectors.toList()),
@@ -293,7 +336,7 @@ public class Calculator {
             }
 
             partiallySolvedExpression.subList(index - 1, index + 2).clear();
-            partiallySolvedExpression.add(index - 1, String.valueOf(result.result().orElse(Double.NaN)));
+            partiallySolvedExpression.add(index - 1, String.valueOf(result.result().get()));
             shuntOperationIndices(allOperationIndices, index, 2);
         }
     }
@@ -334,8 +377,6 @@ public class Calculator {
                 .chars()
                 .mapToObj(c -> (char)c)
                 .filter(c -> c != ' ')
-                .toList()
-                .stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining());
 
