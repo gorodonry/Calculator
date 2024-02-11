@@ -16,7 +16,6 @@ public abstract class MathReader {
         Queue<Character> remainingChars = new ArrayDeque<>(List.of(input.chars()
                 .mapToObj(c -> (char) c)
                 .toArray(Character[]::new)));
-        System.out.println(remainingChars);
         while (!remainingChars.isEmpty()) {
             if (remainingChars.peek() == '(' || remainingChars.peek() == '[') {
                 remainingChars.poll();
@@ -73,11 +72,14 @@ public abstract class MathReader {
      * @param input the string to interpret as a mathematical expression as a list e.g.
      *  -> ["s", "i", "n", "(", "5.32", "+", "67", ")", "/", "l", "o", "g", "-2"].
      * @param errorLog a list for recording any errors encountered while attempting to interpret the string.
+     * @param mostRecentAnswer the answer to the previously entered expression, empty if there is no such expression.
      * @return a list of components representing the expression that was interpreted, or an empty optional if errors
      *  were encountered. From the above example, this method would return
      *  -> ["sin", "(", "5.32", "+", "67", ")", "/", "log", "-2"]
      */
-    public static Optional<List<String>> readExpression(List<String> input, List<String> errorLog) {
+    public static Optional<List<String>> readExpression(List<String> input,
+                                                        List<String> errorLog,
+                                                        Optional<Double> mostRecentAnswer) {
         List<String> currentWorkingSection = new ArrayList<>();
         List<String> formattedExpression = new ArrayList<>();
 
@@ -95,7 +97,7 @@ public abstract class MathReader {
                 Integer.parseInt(component);
 
                 if (!currentWorkingSection.isEmpty() && !currentSectionIsNumber) {
-                    appendCommand(formattedExpression, currentWorkingSection, errorLog);
+                    appendCommand(formattedExpression, currentWorkingSection, errorLog, mostRecentAnswer);
                     currentWorkingSection.clear();
                 }
 
@@ -118,7 +120,7 @@ public abstract class MathReader {
                 appendNumber(formattedExpression,
                         Double.parseDouble(String.join("", currentWorkingSection)));
             } else {
-                appendCommand(formattedExpression, currentWorkingSection, errorLog);
+                appendCommand(formattedExpression, currentWorkingSection, errorLog, mostRecentAnswer);
             }
         }
 
@@ -169,9 +171,13 @@ public abstract class MathReader {
      *  them for the numbers they represent.
      * @param partiallyFormattedExpression the formatted expression so far, to append the command(s) to.
      * @param input the command(s) to append.
+     * @param mostRecentAnswer the answer to the previously entered expression, empty if there is no such expression.
      * @param errorLog a list for recording any errors encountered while attempting to interpret the command(s).
      */
-    private static void appendCommand(List<String> partiallyFormattedExpression, List<String> input, List<String> errorLog) {
+    private static void appendCommand(List<String> partiallyFormattedExpression,
+                                      List<String> input,
+                                      List<String> errorLog,
+                                      Optional<Double> mostRecentAnswer) {
         List<String> command = new ArrayList<>();
 
         for (String component : input) {
@@ -199,6 +205,19 @@ public abstract class MathReader {
             // Check for pi.
             if (String.join("", command).equals("pi")) {
                 appendNumber(partiallyFormattedExpression, Math.PI);
+                command.clear();
+
+                continue;
+            }
+
+            // Check for ans.
+            if (String.join("", command).equals("ans")) {
+                if (mostRecentAnswer.isPresent()) {
+                    appendNumber(partiallyFormattedExpression, mostRecentAnswer.get());
+                } else {
+                    errorLog.add("No calculator history found for ans command");
+                }
+
                 command.clear();
 
                 continue;

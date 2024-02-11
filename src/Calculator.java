@@ -7,7 +7,9 @@ import static java.util.Map.entry;
  */
 public class Calculator {
     boolean running = true;
+    String currentExpression;
     List<String> expressionErrorMessages = new ArrayList<>();
+    List<Query> history = new ArrayList<>();
 
     Scanner reader;
 
@@ -41,15 +43,12 @@ public class Calculator {
                 continue;
             }
 
-            System.out.println("Read expression");
-
             if (input.isPresent()) {
-                System.out.println("Hi-ho");
-                System.out.println(input.get());
                 Result result = evaluate(input.get());
 
                 if (result.successful()) {
                     System.out.printf(" -> %f%n", result.result());
+                    history.add(new Query(currentExpression, result.result()));
                 } else {
                     if (result.errorMessage() != null) {
                         expressionErrorMessages.add(result.errorMessage());
@@ -284,22 +283,22 @@ public class Calculator {
      */
     public Optional<List<String>> readExpression() {
         System.out.print("Expression: ");
-        String expression = reader.nextLine().trim().toLowerCase();
+        currentExpression = reader.nextLine().trim().toLowerCase();
 
-        if (expression.equals("q")) {
+        if (currentExpression.equals("q")) {
             running = false;
             return Optional.empty();
         }
 
-        if (expression.isBlank()) {
+        if (currentExpression.isBlank()) {
             expressionErrorMessages.add("Try entering something...");
         }
 
-        if (!MathReader.bracketsMatching(expression)) {
+        if (!MathReader.bracketsMatching(currentExpression)) {
             expressionErrorMessages.add("Brackets do not match");
         }
 
-        if (MathReader.containsEmptyBrackets(expression)) {
+        if (MathReader.containsEmptyBrackets(currentExpression)) {
             expressionErrorMessages.add("Expression contains empty brackets");
         }
 
@@ -307,11 +306,18 @@ public class Calculator {
             return Optional.empty();
         }
 
-        return MathReader.readExpression(expression.chars()
+        Optional<Double> mostRecentAnswer = Optional.empty();
+
+        if (!history.isEmpty()) {
+            mostRecentAnswer = Optional.of(history.getLast().answer());
+        }
+
+        return MathReader.readExpression(currentExpression.chars()
                 .mapToObj(c -> String.format("%c", (char)c))
                 .filter(s -> !s.equals(" "))
                 .collect(Collectors.toList()),
-                expressionErrorMessages);
+                expressionErrorMessages,
+                mostRecentAnswer);
     }
 
     public static void main(String[] args) {
