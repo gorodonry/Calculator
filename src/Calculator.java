@@ -30,7 +30,7 @@ public class Calculator {
         constants.put("e", Optional.of(Math.E));
         constants.put("pi", Optional.of(Math.PI));
 
-        runCalculator();
+        runProgram();
     }
 
     /**
@@ -41,48 +41,78 @@ public class Calculator {
     }
 
     /**
-     * Runs the calculator until the user doesn't want any more problems solved.
+     * Function controlling the calculator.
      */
-    public void runCalculator() {
-        System.out.println("A simple calculator created in (I'm sorry) Java. You can enter 'q' to quit :)");
+    public void runProgram() {
+        System.out.println("A simple calculator written in (I'm sorry) Java. You can enter 'q' to quit :)");
+
         while (running) {
             System.out.println();
-            expressionErrorMessages = new ArrayList<>();
+            expressionErrorMessages.clear();
 
-            Optional<List<String>> input = readExpression();
+            if (!readExpression()) {
+                reportErrors("interpret");
+
+                return;
+            }
 
             if (!running) {
-                continue;
+                return;
             }
 
-            if (input.isPresent()) {
-                Result result = evaluate(input.get());
-
-                if (result.successful()) {
-                    System.out.printf(" -> %f%n", result.result());
-                    history.add(new Query(currentExpression, result.result()));
-                    constants.put("ans", Optional.of(result.result()));
-                } else {
-                    if (result.errorMessage() != null) {
-                        expressionErrorMessages.add(result.errorMessage());
-                    }
-
-                    System.out.println("Failed to solve expression due to the following reason(s):");
-
-                    for (String error : expressionErrorMessages) {
-                        System.out.printf(" -> %s%n", error);
-                    }
-                }
-            } else {
-                System.out.println("Failed to interpret input due to the following reason(s):");
-
-                for (String error : expressionErrorMessages) {
-                    System.out.printf(" -> %s%n", error);
-                }
-            }
+            runCalculator();
         }
 
         terminate();
+    }
+
+    /**
+     * Runs the calculator solver with the current saved expression.
+     */
+    public void runCalculator() {
+        Optional<List<String>> interpretedExpression = MathReader.readExpression(currentExpression.chars()
+                .mapToObj(c -> String.valueOf((char)c))
+                .collect(Collectors.toList()),
+                expressionErrorMessages,
+                constants);
+
+        if (interpretedExpression.isPresent()) {
+            Result result = evaluate(interpretedExpression.get());
+
+            if (result.successful()) {
+                if (result.result().isPresent()) {
+                    System.out.printf(" -> %f%n", result.result().get());
+                    history.add(new Query(currentExpression, result.result().get()));
+                    constants.put("ans", Optional.of(result.result().get()));
+                } else {
+                    System.out.println(" -> Please contact the dev, this shouldn't have happened");
+                }
+            } else {
+                if (result.errorMessage().isPresent()) {
+                    expressionErrorMessages.add(result.errorMessage().get());
+                }
+
+                reportErrors("solve");
+            }
+        } else {
+            reportErrors("interpret");
+        }
+    }
+
+    /**
+     * Reports any errors that occurred while attempting an action.
+     * @param failedAction the action that the errors occurred while attempting.
+     */
+    public void reportErrors(String failedAction) {
+        System.out.printf("Failed to %s input due to the following reason(s):%n", failedAction);
+
+        for (String error : expressionErrorMessages) {
+            if (error.equals("ignored")) {
+                continue;
+            }
+
+            System.out.printf(" -> %s%n", error);
+        }
     }
 
     /**
@@ -114,7 +144,7 @@ public class Calculator {
             Result result = evaluate(expression.subList(openBracketIndex + 1, closeBracketIndex));
 
             if (!result.successful()) {
-                return new UnsuccessfulResult(null);
+                return new UnsuccessfulResult("ignored");
             }
 
             expression.subList(openBracketIndex, openBracketIndex + 3).clear();
@@ -171,7 +201,8 @@ public class Calculator {
             };
 
             if (!result.successful()) {
-                expressionErrorMessages.add(result.errorMessage());
+                expressionErrorMessages.add(result.errorMessage()
+                        .orElse("Please contact the dev, this shouldn't have happened"));
                 break;
             }
 
@@ -182,32 +213,32 @@ public class Calculator {
         }
 
         if (!expressionErrorMessages.isEmpty()) {
-            return new UnsuccessfulResult(null);
+            return new UnsuccessfulResult("ignored");
         }
 
         computeBinaryOperations(operationsToCompute, OperationOrder.EXPONENTS, expression);
 
         if (!expressionErrorMessages.isEmpty()) {
-            return new UnsuccessfulResult(null);
+            return new UnsuccessfulResult("ignored");
         }
 
         computeBinaryOperations(operationsToCompute, OperationOrder.DIVISION_MULTIPLICATION, expression);
 
         if (!expressionErrorMessages.isEmpty()) {
-            return new UnsuccessfulResult(null);
+            return new UnsuccessfulResult("ignored");
         }
 
         computeBinaryOperations(operationsToCompute, OperationOrder.ADDITION_SUBTRACTION, expression);
 
         if (!expressionErrorMessages.isEmpty()) {
-            return new UnsuccessfulResult(null);
+            return new UnsuccessfulResult("ignored");
         }
 
         if (expression.size() != 1) {
             return new UnsuccessfulResult("No more operators to apply to the remaining numbers");
         }
 
-        return new SuccessfulResult(Double.parseDouble(expression.get(0)));
+        return new SuccessfulResult(Double.parseDouble(expression.getFirst()));
     }
 
     /**
@@ -256,12 +287,13 @@ public class Calculator {
             };
 
             if (!result.successful()) {
-                expressionErrorMessages.add(result.errorMessage());
+                expressionErrorMessages.add(result.errorMessage()
+                        .orElse("Please contact the dev, this shouldn't have happened"));
                 break;
             }
 
             partiallySolvedExpression.subList(index - 1, index + 2).clear();
-            partiallySolvedExpression.add(index - 1, String.valueOf(result.result()));
+            partiallySolvedExpression.add(index - 1, String.valueOf(result.result().orElse(Double.NaN)));
             shuntOperationIndices(allOperationIndices, index, 2);
         }
     }
@@ -291,40 +323,40 @@ public class Calculator {
     /**
      * Obtains a string from the user representing the expression they would like solved, and then checks and formats
      *  it.
-     * @return a list of components representing the expression, or nothing if errors were encountered while
-     *  interpreting the expression.
+     * @return a boolean indicating whether the read was successful (i.e. had no errors).
      */
-    public Optional<List<String>> readExpression() {
+    public boolean readExpression() {
         System.out.print("Expression: ");
-        currentExpression = reader.nextLine().trim();
 
+        // Read what the user enters and remove all spaces.
+        currentExpression = reader.nextLine()
+                .trim()
+                .chars()
+                .mapToObj(c -> (char)c)
+                .filter(c -> c != ' ')
+                .toList()
+                .stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining());
+
+        // Entering "q" cues the program to stop.
         if (currentExpression.equals("q")) {
             running = false;
-            return Optional.empty();
+        } else {
+            if (currentExpression.isBlank()) {
+                expressionErrorMessages.add("Try entering something...");
+            }
+
+            if (!MathReader.bracketsMatching(currentExpression)) {
+                expressionErrorMessages.add("Brackets do not match");
+            }
+
+            if (MathReader.containsEmptyBrackets(currentExpression)) {
+                expressionErrorMessages.add("Expression contains empty brackets");
+            }
         }
 
-        if (currentExpression.isBlank()) {
-            expressionErrorMessages.add("Try entering something...");
-        }
-
-        if (!MathReader.bracketsMatching(currentExpression)) {
-            expressionErrorMessages.add("Brackets do not match");
-        }
-
-        if (MathReader.containsEmptyBrackets(currentExpression)) {
-            expressionErrorMessages.add("Expression contains empty brackets");
-        }
-
-        if (!expressionErrorMessages.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return MathReader.readExpression(currentExpression.chars()
-                .mapToObj(c -> String.format("%c", (char)c))
-                .filter(s -> !s.equals(" "))
-                .collect(Collectors.toList()),
-                expressionErrorMessages,
-                constants);
+        return expressionErrorMessages.isEmpty();
     }
 
     public static void main(String[] args) {

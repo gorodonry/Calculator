@@ -1,5 +1,4 @@
 import java.util.*;
-import java.util.Arrays.*;
 
 /**
  * Contains various methods for interpreting an input string as a mathematical expression.

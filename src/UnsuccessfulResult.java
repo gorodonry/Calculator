@@ -1,13 +1,25 @@
+import java.util.Optional;
+
 /**
  * Stores the error message of an unsuccessful calculation.
  */
-public record UnsuccessfulResult(String errorMessage) implements Result {
+public class UnsuccessfulResult implements Result {
+    String errorMessage;
+
+    /**
+     * Instantiates a new unsuccessful result.
+     * @param errorMessage the reason the calculation was unsuccessful.
+     */
+    public UnsuccessfulResult(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
     /**
      * Gets the result of the calculation.
-     * @return Double.NaN.
+     * @return an empty optional.
      */
-    public double result() {
-        return Double.NaN;
+    public Optional<Double> result() {
+        return Optional.empty();
     }
 
     /**
@@ -16,5 +28,13 @@ public record UnsuccessfulResult(String errorMessage) implements Result {
      */
     public boolean successful() {
         return false;
+    }
+
+    /**
+     * Gets the error message associated with this result.
+     * @return an optional containing the stored error message.
+     */
+    public Optional<String> errorMessage() {
+        return Optional.of(errorMessage);
     }
 }

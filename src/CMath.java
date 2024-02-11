@@ -47,9 +47,9 @@ public abstract class CMath {
             return new UnsuccessfulResult("No operands provided for -");
 
         if (elements.size() == 1)
-            return new SuccessfulResult(elements.get(0));
+            return new SuccessfulResult(elements.getFirst());
 
-        return new SuccessfulResult(elements.get(0) - add(elements.subList(1, elements.size())).result());
+        return new SuccessfulResult(elements.getFirst() - add(elements.subList(1, elements.size())).result().orElse(Double.NaN));
     }
 
     /**
@@ -75,9 +75,9 @@ public abstract class CMath {
             return new UnsuccessfulResult("No operands provided for /");
 
         if (elements.size() == 1)
-            return new SuccessfulResult(elements.get(0));
+            return new SuccessfulResult(elements.getFirst());
 
-        return new SuccessfulResult(elements.get(0) / multiply(elements.subList(1, elements.size())).result());
+        return new SuccessfulResult(elements.getFirst() / multiply(elements.subList(1, elements.size())).result().orElse(Double.NaN));
     }
 
     /**
@@ -113,7 +113,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for sqrt (required operands: 1)");
 
-        return new SuccessfulResult(Math.sqrt(elements.get(0)));
+        return new SuccessfulResult(Math.sqrt(elements.getFirst()));
     }
 
     /**
@@ -127,7 +127,7 @@ public abstract class CMath {
     public static Result calculateLogarithm(List<Double> elements) {
         switch (elements.size()) {
             case 1 -> {
-                return new SuccessfulResult(Math.log10(elements.get(0)));
+                return new SuccessfulResult(Math.log10(elements.getFirst()));
             }
             case 2 -> {
                 return new SuccessfulResult(Math.log(elements.get(0)) / Math.log(elements.get(1)));
@@ -148,7 +148,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for ln (required operands: 1)");
 
-        return new SuccessfulResult(Math.log(elements.get(0)));
+        return new SuccessfulResult(Math.log(elements.getFirst()));
     }
 
     /**
@@ -161,7 +161,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for sin (required operands: 1)");
 
-        return new SuccessfulResult(Math.sin(elements.get(0)));
+        return new SuccessfulResult(Math.sin(elements.getFirst()));
     }
 
     /**
@@ -174,7 +174,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for cos (required operands: 1)");
 
-        return new SuccessfulResult(Math.cos(elements.get(0)));
+        return new SuccessfulResult(Math.cos(elements.getFirst()));
     }
 
     /**
@@ -187,7 +187,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for tan (required operands: 1)");
 
-        return new SuccessfulResult(Math.tan(elements.get(0)));
+        return new SuccessfulResult(Math.tan(elements.getFirst()));
     }
 
     /**
@@ -200,7 +200,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for csc (required operands: 1");
 
-        return new SuccessfulResult(1 / calculateSin(elements).result());
+        return new SuccessfulResult(1 / calculateSin(elements).result().orElse(Double.NaN));
     }
 
     /**
@@ -213,7 +213,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for sec (required operands: 1");
 
-        return new SuccessfulResult(1 / calculateCos(elements).result());
+        return new SuccessfulResult(1 / calculateCos(elements).result().orElse(Double.NaN));
     }
 
     /**
@@ -226,7 +226,7 @@ public abstract class CMath {
         if (elements.size() != 1)
             return new UnsuccessfulResult("Invalid number of operands for cot (required operands: 1");
 
-        return new SuccessfulResult(1 / calculateTan(elements).result());
+        return new SuccessfulResult(1 / calculateTan(elements).result().orElse(Double.NaN));
     }
 
     /**
@@ -238,7 +238,7 @@ public abstract class CMath {
         if (elements.isEmpty())
             return new UnsuccessfulResult("No operands provided for avg");
 
-        return new SuccessfulResult(add(elements).result() / elements.size());
+        return new SuccessfulResult(add(elements).result().orElse(Double.NaN) / elements.size());
     }
 
     /**
