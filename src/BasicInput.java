@@ -2,7 +2,7 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 public abstract class BasicInput {
-    public static String[] POSITIVE_ANSWERS = { "y", "yes", "n", "np" };
+    public static String[] POSITIVE_ANSWERS = { "y", "yes" };
     public static String[] VALID_ANSWERS = { "y", "yes", "n", "no" };
 
     public static boolean askBinaryQuestion(String prompt, Scanner systemInputStreamReader) {
