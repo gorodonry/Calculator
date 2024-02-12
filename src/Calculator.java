@@ -9,6 +9,7 @@ import static java.util.Map.entry;
 public class Calculator {
     static final char[] USER_DEFINABLE_CONSTANTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
     static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.##########");
+    static final String[] NON_CALCULATOR_INPUTS = { "q", "help" };
 
     boolean running = true;
     String currentExpression;
@@ -59,11 +60,16 @@ public class Calculator {
                 return;
             }
 
-            if (!running) {
-                return;
+            if (Arrays.asList(NON_CALCULATOR_INPUTS).contains(currentExpression)) {
+                switch (currentExpression) {
+                    case "q" -> running = false;
+                    case "help" -> CHelp.help();
+                    default -> {
+                    }
+                }
+            } else {
+                runCalculator();
             }
-
-            runCalculator();
         }
 
         terminate();
@@ -126,13 +132,9 @@ public class Calculator {
             Result result = evaluate(interpretedExpression.get());
 
             if (result.successful()) {
-                if (result.result().isPresent()) {
-                    System.out.printf(" -> %s%n", DECIMAL_FORMAT.format(result.result().get()));
-                    history.add(new Query(currentExpression, result.result().get()));
-                    constants.put("ans", Optional.of(result.result().get()));
-                } else {
-                    System.out.println(" -> Please contact the dev, this shouldn't have happened");
-                }
+                System.out.printf(" -> %s%n", DECIMAL_FORMAT.format(result.result().get()));
+                history.add(new Query(currentExpression, result.result().get()));
+                constants.put("ans", Optional.of(result.result().get()));
             } else {
                 if (result.errorMessage().isPresent()) {
                     expressionErrorMessages.add(result.errorMessage().get());
@@ -383,21 +385,20 @@ public class Calculator {
                 .map(String::valueOf)
                 .collect(Collectors.joining());
 
-        // Entering "q" cues the program to stop.
-        if (currentExpression.equals("q")) {
-            running = false;
-        } else {
-            if (currentExpression.isBlank()) {
-                expressionErrorMessages.add("Try entering something...");
-            }
+        if (Arrays.asList(NON_CALCULATOR_INPUTS).contains(currentExpression)) {
+            return true;
+        }
 
-            if (!MathReader.bracketsMatching(currentExpression)) {
-                expressionErrorMessages.add("Brackets do not match");
-            }
+        if (currentExpression.isBlank()) {
+            expressionErrorMessages.add("Try entering something...");
+        }
 
-            if (MathReader.containsEmptyBrackets(currentExpression)) {
-                expressionErrorMessages.add("Expression contains empty brackets");
-            }
+        if (!MathReader.bracketsMatching(currentExpression)) {
+            expressionErrorMessages.add("Brackets do not match");
+        }
+
+        if (MathReader.containsEmptyBrackets(currentExpression)) {
+            expressionErrorMessages.add("Expression contains empty brackets");
         }
 
         return expressionErrorMessages.isEmpty();
