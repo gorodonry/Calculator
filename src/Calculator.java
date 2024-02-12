@@ -1,3 +1,4 @@
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import static java.util.Map.entry;
@@ -7,6 +8,8 @@ import static java.util.Map.entry;
  */
 public class Calculator {
     static final char[] USER_DEFINABLE_CONSTANTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+    static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.##########");
+
     boolean running = true;
     String currentExpression;
     List<String> expressionErrorMessages = new ArrayList<>();
@@ -124,7 +127,7 @@ public class Calculator {
 
             if (result.successful()) {
                 if (result.result().isPresent()) {
-                    System.out.printf(" -> %f%n", result.result().get());
+                    System.out.printf(" -> %s%n", DECIMAL_FORMAT.format(result.result().get()));
                     history.add(new Query(currentExpression, result.result().get()));
                     constants.put("ans", Optional.of(result.result().get()));
                 } else {
