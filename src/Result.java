@@ -1,24 +1,31 @@
 import java.util.Optional;
 
 /**
- * Stores information about the result of a calculation.
+ * Stores the result of a calculation.
  */
 public interface Result {
     /**
-     * Gets the result stored.
-     * @return the result stored.
+     * Gets the result of the calculation.
+     *
+     * @return the result of the calculation.
      */
-    Optional<Double> result();
+    default Optional<Double> result() {
+        return Optional.empty();
+    }
 
     /**
      * Gets a boolean indicating whether the calculation that obtained this result was performed successfully.
-     * @return a boolean indicating whether the calculation that obtained this result was performed successfully.
+     *
+     * @return true if the calculation was successful, false otherwise.
      */
     boolean successful();
 
     /**
      * Gets an error message explaining why the calculation failed (if applicable).
-     * @return an error message explaining why the calculation failed, or null if it was successful.
+     *
+     * @return an error message explaining why the calculation failed.
      */
-    Optional<String> errorMessage();
+    default Optional<String> errorMessage() {
+        return Optional.empty();
+    }
 }
