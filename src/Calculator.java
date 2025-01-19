@@ -1,6 +1,7 @@
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import static java.util.Map.entry;
 
@@ -183,20 +184,25 @@ public class Calculator {
     Result evaluate(List<String> expression) {
         // Locate and solve the contents of the rightmost opening bracket until no brackets are remaining, then solve
         //  anything that remains. Applies BEDMAS.
-
-        while (expression.contains("(") || expression.contains("[")) {
+        while (MathReader.brackets.keySet().stream().map(String::valueOf).anyMatch(expression::contains)) {
             int openBracketIndex = -1;
-            for (int i = 0; i < expression.size(); i++) {
-                if (expression.get(i).equals("(") || expression.get(i).equals("[")) {
-                    openBracketIndex = i;
+            for (AtomicInteger i = new AtomicInteger(); i.get() < expression.size(); i.addAndGet(1)) {
+                if (MathReader.brackets.keySet()
+                        .stream()
+                        .map(String::valueOf)
+                        .anyMatch(b -> expression.get(i.get()).equals(b))) {
+                    openBracketIndex = i.get();
                 }
             }
 
             int closeBracketIndex = -1;
-            for (int i = openBracketIndex + 1; i < expression.size(); i++) {
+            for (AtomicInteger i = new AtomicInteger(openBracketIndex + 1); i.get() < expression.size(); i.addAndGet(1)) {
                 // Note that due to prior checking of the input we can assume the brackets match.
-                if (expression.get(i).equals(")") || expression.get(i).equals("]")) {
-                    closeBracketIndex = i;
+                if (MathReader.brackets.values()
+                        .stream()
+                        .map(String::valueOf)
+                        .anyMatch(b -> expression.get(i.get()).equals(b))) {
+                    closeBracketIndex = i.get();
                     break;
                 }
             }
@@ -211,7 +217,7 @@ public class Calculator {
             expression.add(openBracketIndex, String.valueOf(result.result()));
         }
 
-        // Mo brackets present; evaluate the expression using (B)EDMAS.
+        // If no brackets are present, evaluate the expression using (B)EDMAS.
 
         Map<OperationOrder, List<Integer>> operationsToCompute = Map.ofEntries(
                 entry(OperationOrder.BracketsFunctions, new ArrayList<>()),
@@ -228,35 +234,37 @@ public class Calculator {
 
         // Compute all the functions from rightmost to leftmost.
 
-        Stack<Integer> functionIndices = new Stack<>();
-        functionIndices.addAll(operationsToCompute.get(OperationOrder.BracketsFunctions));
-
-        while (!functionIndices.isEmpty()) {
-            int index = functionIndices.pop();
+        while (!operationsToCompute.get(OperationOrder.BracketsFunctions).isEmpty()) {
+            int index = operationsToCompute.get(OperationOrder.BracketsFunctions).removeLast();
 
             if (index == expression.size() - 1) {
-                expressionErrorMessages.add(String.format("No argument supplied for %s function",
-                        expression.get(index)));
+                expressionErrorMessages.add(String.format(
+                        "No arguments supplied for %s function",
+                        expression.get(index)
+                ));
+
                 break;
             }
 
-            List<Double> argument;
+            // TODO: Add support for functions with multiple arguments.
+            List<Double> arguments;
+
             try {
-                argument = List.of(Double.parseDouble(expression.get(index + 1)));
+                arguments = List.of(Double.parseDouble(expression.get(index + 1)));
             } catch (NumberFormatException ignored) {
                 expressionErrorMessages.add(String.format("%s is not a number...", expression.get(index + 1)));
                 break;
             }
 
             Result result = switch (expression.get(index)) {
-                case "sqrt" -> CMath.calculateRoot(argument);
-                case "ln" -> CMath.calculateLogarithm(argument);
-                case "sin" -> CMath.calculateSin(argument);
-                case "cos" -> CMath.calculateCos(argument);
-                case "tan" -> CMath.calculateTan(argument);
-                case "csc" -> CMath.calculateCsc(argument);
-                case "sec" -> CMath.calculateSec(argument);
-                case "cot" -> CMath.calculateCot(argument);
+                case "sqrt" -> CMath.calculateRoot(arguments);
+                case "ln" -> CMath.calculateLogarithm(arguments);
+                case "sin" -> CMath.calculateSin(arguments);
+                case "cos" -> CMath.calculateCos(arguments);
+                case "tan" -> CMath.calculateTan(arguments);
+                case "csc" -> CMath.calculateCsc(arguments);
+                case "sec" -> CMath.calculateSec(arguments);
+                case "cot" -> CMath.calculateCot(arguments);
                 default -> new UnsuccessfulResult("Please contact the dev, this shouldn't have happened");
             };
 
@@ -302,7 +310,8 @@ public class Calculator {
     }
 
     /**
-     * Calculates all binary operations found of a particular order in (B)EDMAS from left to right.
+     * Calculates all binary operations found according to (B)EDMAS, and working from left to right.
+     *
      * @param allOperationIndices the indices of all binary operations sorted by the order they need to be solved.
      * @param operationTypesToCompute the types of operation to compute with this particular use of the function.
      * @param partiallySolvedExpression the partially solved expression.
@@ -316,8 +325,11 @@ public class Calculator {
             int index = allOperationIndices.get(operationTypesToCompute).removeFirst();
 
             if (index == 0 || index == partiallySolvedExpression.size() - 1) {
-                expressionErrorMessages.add(String.format("Not enough arguments (requires 2) supplied for %s",
-                        partiallySolvedExpression.get(index)));
+                expressionErrorMessages.add(String.format(
+                        "Not enough arguments (requires 2) supplied for %s",
+                        partiallySolvedExpression.get(index)
+                ));
+
                 break;
             }
 
@@ -345,17 +357,16 @@ public class Calculator {
                 case "/" -> CMath.divide(arguments);
                 case "+" -> CMath.add(arguments);
                 case "-" -> CMath.subtract(arguments);
-                default -> new UnsuccessfulResult("Please contact the dev; this shouldn't have happened");
+                default -> throw new RuntimeException("Please contact the dev; this shouldn't have happened...");
             };
 
             if (!result.successful()) {
-                expressionErrorMessages.add(result.errorMessage()
-                        .orElse("Please contact the dev, this shouldn't have happened"));
+                expressionErrorMessages.add(result.errorMessage().orElseThrow());
                 break;
             }
 
             partiallySolvedExpression.subList(index - 1, index + 2).clear();
-            partiallySolvedExpression.add(index - 1, String.valueOf(result.result().get()));
+            partiallySolvedExpression.add(index - 1, String.valueOf(result.result().orElseThrow()));
             shuntOperationIndices(allOperationIndices, index, 2);
         }
     }
