@@ -1,22 +1,22 @@
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 import static java.util.Map.entry;
 
 /**
- * A calculator program.
+ * A simple and not particularly well written calculator program.
  */
 public class Calculator {
     static final char[] USER_DEFINABLE_CONSTANTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
-    static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.##########");
-    static final String[] NON_CALCULATOR_INPUTS = { "q", "help" };
+    static final DecimalFormat decimalFormat = new DecimalFormat("#.##########");
+    static final List<String> nonCalculatorInputs = List.of("q", "help");
 
     boolean running = true;
     String currentExpression;
     List<String> expressionErrorMessages = new ArrayList<>();
     List<Query> history = new ArrayList<>();
     Map<String, Optional<Double>> constants = new HashMap<>();
-
     Scanner reader;
 
     /**
@@ -45,27 +45,25 @@ public class Calculator {
     }
 
     /**
-     * Function controlling the calculator.
+     * Main loop of the program; once called it prompts for input until terminated by the user.
      */
     public void runProgram() {
-        System.out.println("A simple calculator written in (I'm sorry) Java. You can enter 'q' to quit :)");
+        System.out.println("A simple calculator written in Java. You can enter 'q' to quit :)");
 
         while (running) {
             System.out.println();
             expressionErrorMessages.clear();
 
             if (!readExpression()) {
-                reportErrors("interpret");
-
+                reportError("interpret");
                 return;
             }
 
-            if (Arrays.asList(NON_CALCULATOR_INPUTS).contains(currentExpression)) {
+            if (nonCalculatorInputs.contains(currentExpression)) {
                 switch (currentExpression) {
                     case "q" -> running = false;
                     case "help" -> CHelp.help();
-                    default -> {
-                    }
+                    default -> { }
                 }
             } else {
                 runCalculator();
@@ -82,7 +80,7 @@ public class Calculator {
         if (currentExpression.contains("=")) {
             if (currentExpression.chars().filter(c -> c == '=').count() > 1) {
                 expressionErrorMessages.add("More than one equals sign entered");
-                reportErrors("interpret");
+                reportError("interpret");
 
                 return;
             }
@@ -116,7 +114,7 @@ public class Calculator {
                     expressionErrorMessages.add(rightHandResult.errorMessage().get());
                 }
 
-                reportErrors("solve");
+                reportError("solve");
             }
 
             return;
@@ -132,7 +130,7 @@ public class Calculator {
             Result result = evaluate(interpretedExpression.get());
 
             if (result.successful()) {
-                System.out.printf(" -> %s%n", DECIMAL_FORMAT.format(result.result().get()));
+                System.out.printf(" -> %s%n", decimalFormat.format(result.result().get()));
                 history.add(new Query(currentExpression, result.result().get()));
                 constants.put("ans", Optional.of(result.result().get()));
             } else {
@@ -140,18 +138,19 @@ public class Calculator {
                     expressionErrorMessages.add(result.errorMessage().get());
                 }
 
-                reportErrors("solve");
+                reportError("solve");
             }
         } else {
-            reportErrors("interpret");
+            reportError("interpret");
         }
     }
 
     /**
      * Reports any errors that occurred while attempting an action.
-     * @param failedAction the action that the errors occurred while attempting.
+     *
+     * @param failedAction the action that the error(s) occurred while attempting.
      */
-    public void reportErrors(String failedAction) {
+    public void reportError(String failedAction) {
         System.out.printf("Failed to %s input due to the following reason(s):%n", failedAction);
 
         for (String error : expressionErrorMessages) {
@@ -165,7 +164,9 @@ public class Calculator {
 
     /**
      * Evaluates an interpreted (grouped by numbers and commands) expression.
+     *
      * @param expression the expression to solve.
+     *
      * @return the answer to the expression (provided no errors arise while attempting to solve).
      */
     public Result evaluate(List<String> expression) {
@@ -202,22 +203,22 @@ public class Calculator {
         // Mo brackets present; evaluate the expression using (B)EDMAS.
 
         Map<OperationOrder, List<Integer>> operationsToCompute = Map.ofEntries(
-                entry(OperationOrder.BRACKETS_FUNCTIONS, new ArrayList<>()),
-                entry(OperationOrder.EXPONENTS, new ArrayList<>()),
-                entry(OperationOrder.DIVISION_MULTIPLICATION, new ArrayList<>()),
-                entry(OperationOrder.ADDITION_SUBTRACTION, new ArrayList<>())
+                entry(OperationOrder.BracketsFunctions, new ArrayList<>()),
+                entry(OperationOrder.Exponents, new ArrayList<>()),
+                entry(OperationOrder.DivisionMultiplication, new ArrayList<>()),
+                entry(OperationOrder.AdditionSubtraction, new ArrayList<>())
         );
 
         for (int i = 0; i < expression.size(); i++) {
-            if (CMath.OPERATION_ORDERS.containsKey(expression.get(i))) {
-                operationsToCompute.get(CMath.OPERATION_ORDERS.get(expression.get(i))).add(i);
+            if (CMath.operations.containsKey(expression.get(i))) {
+                operationsToCompute.get(CMath.operations.get(expression.get(i))).add(i);
             }
         }
 
         // Compute all the functions from rightmost to leftmost.
 
         Stack<Integer> functionIndices = new Stack<>();
-        functionIndices.addAll(operationsToCompute.get(OperationOrder.BRACKETS_FUNCTIONS));
+        functionIndices.addAll(operationsToCompute.get(OperationOrder.BracketsFunctions));
 
         while (!functionIndices.isEmpty()) {
             int index = functionIndices.pop();
@@ -237,8 +238,8 @@ public class Calculator {
             }
 
             Result result = switch (expression.get(index)) {
-                case "sqrt" -> CMath.calculateSqrt(argument);
-                case "ln" -> CMath.calculateNaturalLogarithm(argument);
+                case "sqrt" -> CMath.calculateRoot(argument);
+                case "ln" -> CMath.calculateLogarithm(argument);
                 case "sin" -> CMath.calculateSin(argument);
                 case "cos" -> CMath.calculateCos(argument);
                 case "tan" -> CMath.calculateTan(argument);
@@ -264,19 +265,19 @@ public class Calculator {
             return new UnsuccessfulResult("ignored");
         }
 
-        computeBinaryOperations(operationsToCompute, OperationOrder.EXPONENTS, expression);
+        computeBinaryOperations(operationsToCompute, OperationOrder.Exponents, expression);
 
         if (!expressionErrorMessages.isEmpty()) {
             return new UnsuccessfulResult("ignored");
         }
 
-        computeBinaryOperations(operationsToCompute, OperationOrder.DIVISION_MULTIPLICATION, expression);
+        computeBinaryOperations(operationsToCompute, OperationOrder.DivisionMultiplication, expression);
 
         if (!expressionErrorMessages.isEmpty()) {
             return new UnsuccessfulResult("ignored");
         }
 
-        computeBinaryOperations(operationsToCompute, OperationOrder.ADDITION_SUBTRACTION, expression);
+        computeBinaryOperations(operationsToCompute, OperationOrder.AdditionSubtraction, expression);
 
         if (!expressionErrorMessages.isEmpty()) {
             return new UnsuccessfulResult("ignored");
@@ -295,9 +296,11 @@ public class Calculator {
      * @param operationTypesToCompute the types of operation to compute with this particular use of the function.
      * @param partiallySolvedExpression the partially solved expression.
      */
-    private void computeBinaryOperations(Map<OperationOrder, List<Integer>> allOperationIndices,
-                                           OperationOrder operationTypesToCompute,
-                                           List<String> partiallySolvedExpression) {
+    private void computeBinaryOperations(
+            Map<OperationOrder, List<Integer>> allOperationIndices,
+            OperationOrder operationTypesToCompute,
+            List<String> partiallySolvedExpression
+    ) {
         while (!allOperationIndices.get(operationTypesToCompute).isEmpty()) {
             int index = allOperationIndices.get(operationTypesToCompute).removeFirst();
 
@@ -350,13 +353,16 @@ public class Calculator {
      * Shunts known operation indices by a certain factor. Useful after just computing an operation that combines, say,
      *  5 + 6 (3 entries in the expression list) into 11 (1 entry in the expression list) thus shunting all known
      *  operation indices beyond the + operator down by 2.
+     *
      * @param operationsToComplete the known indices of operators in the expression not yet computed.
      * @param completedOperationIndex the index of the operator just computed.
      * @param shuntBy the factor to shunt all known operation indices by.
      */
-    private void shuntOperationIndices(Map<OperationOrder, List<Integer>> operationsToComplete,
-                                       int completedOperationIndex,
-                                       int shuntBy) {
+    private void shuntOperationIndices(
+            Map<OperationOrder, List<Integer>> operationsToComplete,
+            int completedOperationIndex,
+            int shuntBy
+    ) {
         for (OperationOrder key : operationsToComplete.keySet()) {
             List<Integer> operationIndices = operationsToComplete.get(key);
             for (int i = 0; i < operationIndices.size(); i++) {
@@ -369,8 +375,8 @@ public class Calculator {
     }
 
     /**
-     * Obtains a string from the user representing the expression they would like solved, and then checks and formats
-     *  it.
+     * Obtains a string from the user representing the expression they would like solved, then checks and formats it.
+     *
      * @return a boolean indicating whether the read was successful (i.e. had no errors).
      */
     public boolean readExpression() {
@@ -385,7 +391,7 @@ public class Calculator {
                 .map(String::valueOf)
                 .collect(Collectors.joining());
 
-        if (Arrays.asList(NON_CALCULATOR_INPUTS).contains(currentExpression)) {
+        if (nonCalculatorInputs.contains(currentExpression)) {
             return true;
         }
 
@@ -404,6 +410,11 @@ public class Calculator {
         return expressionErrorMessages.isEmpty();
     }
 
+    /**
+     * Entry point for this program.
+     *
+     * @param args command line arguments (ignored).
+     */
     public static void main(String[] args) {
         Calculator calculator = new Calculator();
         calculator.initialise();
