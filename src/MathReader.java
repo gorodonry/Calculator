@@ -79,45 +79,57 @@ public final class MathReader {
     ) {
         List<String> currentWorkingSection = new ArrayList<>();
         List<String> formattedExpression = new ArrayList<>();
-
-        boolean currentSectionIsNumber = true;
+        ExpressionSection currentSectionType = ExpressionSection.Number;
 
         for (String component : input) {
-
+            // Decimal points are treated separately, as they fail the integer parse test, but only constitute parts
+            //  of numbers.
             if (component.equals(".")) {
                 currentWorkingSection.add(component);
-
                 continue;
             }
 
+            // A switch between the try block and the catch block running indicates a switch between a number
+            //  component and a command component. This property is used to distinguish parts of the expression
+            //  from each other, which are then parsed by sub-methods.
             try {
                 Integer.parseInt(component);
 
-                if (!currentWorkingSection.isEmpty() && !currentSectionIsNumber) {
+                if (!currentWorkingSection.isEmpty() && currentSectionType == ExpressionSection.Command) {
                     appendCommand(formattedExpression, currentWorkingSection, errorLog, constants);
                     currentWorkingSection.clear();
                 }
 
                 currentWorkingSection.add(component);
-                currentSectionIsNumber = true;
+                currentSectionType = ExpressionSection.Number;
             } catch (NumberFormatException ignored) {
-                if (!currentWorkingSection.isEmpty() && currentSectionIsNumber) {
-                    appendNumber(formattedExpression,
-                            Double.parseDouble(String.join("", currentWorkingSection)));
+                if (!currentWorkingSection.isEmpty() && currentSectionType == ExpressionSection.Number) {
+                    appendNumber(
+                            formattedExpression,
+                            Double.parseDouble(String.join("", currentWorkingSection))
+                    );
+
                     currentWorkingSection.clear();
                 }
 
                 currentWorkingSection.add(component);
-                currentSectionIsNumber = false;
+                currentSectionType = ExpressionSection.Command;
             }
         }
 
+        // There will be a residual component upon exiting the loop, this is parsed here.
         if (!currentWorkingSection.isEmpty()) {
-            if (currentSectionIsNumber) {
-                appendNumber(formattedExpression,
-                        Double.parseDouble(String.join("", currentWorkingSection)));
-            } else {
-                appendCommand(formattedExpression, currentWorkingSection, errorLog, constants);
+            switch (currentSectionType) {
+                case Number -> appendNumber(
+                        formattedExpression,
+                        Double.parseDouble(String.join("", currentWorkingSection))
+                );
+                case Command -> appendCommand(
+                        formattedExpression,
+                        currentWorkingSection,
+                        errorLog,
+                        constants
+                );
             }
         }
 
