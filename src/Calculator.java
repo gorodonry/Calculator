@@ -81,39 +81,41 @@ public class Calculator {
             if (currentExpression.chars().filter(c -> c == '=').count() > 1) {
                 expressionErrorMessages.add("More than one equals sign entered");
                 reportError("interpret");
-
                 return;
             }
 
-            Optional<List<String>> leftHandSide = MathReader.readExpression(currentExpression.split("=")[0]
+            Optional<List<String>> leftHandSide = MathReader.readExpression(
+                    currentExpression.split("=")[0]
                             .chars()
                             .mapToObj(c -> String.valueOf((char)c))
                             .collect(Collectors.toList()),
                     expressionErrorMessages,
-                    constants);
+                    constants
+            );
 
-            Optional<List<String>> rightHandSide = MathReader.readExpression(currentExpression.split("=")[1]
+            Optional<List<String>> rightHandSide = MathReader.readExpression(
+                    currentExpression.split("=")[1]
                             .chars()
                             .mapToObj(c -> String.valueOf((char)c))
                             .collect(Collectors.toList()),
                     expressionErrorMessages,
-                    constants);
+                    constants
+            );
 
             Result leftHandResult = evaluate(leftHandSide.orElseGet(ArrayList::new));
             Result rightHandResult = evaluate(rightHandSide.orElseGet(ArrayList::new));
 
             if (leftHandResult.successful() && rightHandResult.successful()) {
-                System.out.printf(" -> %s%n",
-                        CMath.compareDouble(leftHandResult.result().get(), rightHandResult.result().get()));
+                System.out.printf(
+                        " -> %s%n",
+                        CMath.compareDouble(
+                                leftHandResult.result().orElseThrow(),
+                                rightHandResult.result().orElseThrow()
+                        )
+                );
             } else {
-                if (leftHandResult.errorMessage().isPresent()) {
-                    expressionErrorMessages.add(leftHandResult.errorMessage().get());
-                }
-
-                if (rightHandResult.errorMessage().isPresent()) {
-                    expressionErrorMessages.add(rightHandResult.errorMessage().get());
-                }
-
+                leftHandResult.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
+                rightHandResult.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
                 reportError("solve");
             }
 
@@ -124,20 +126,18 @@ public class Calculator {
                 .mapToObj(c -> String.valueOf((char)c))
                 .collect(Collectors.toList()),
                 expressionErrorMessages,
-                constants);
+                constants
+        );
 
         if (interpretedExpression.isPresent()) {
             Result result = evaluate(interpretedExpression.get());
 
             if (result.successful()) {
-                System.out.printf(" -> %s%n", decimalFormat.format(result.result().get()));
-                history.add(new Query(currentExpression, result.result().get()));
-                constants.put("ans", Optional.of(result.result().get()));
+                System.out.printf(" -> %s%n", decimalFormat.format(result.result().orElseThrow()));
+                history.add(new Query(currentExpression, result.result().orElseThrow()));
+                constants.put("ans", Optional.of(result.result().orElseThrow()));
             } else {
-                if (result.errorMessage().isPresent()) {
-                    expressionErrorMessages.add(result.errorMessage().get());
-                }
-
+                result.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
                 reportError("solve");
             }
         } else {
@@ -382,7 +382,6 @@ public class Calculator {
     public boolean readExpression() {
         System.out.print("Expression: ");
 
-        // Read what the user enters and remove all spaces.
         currentExpression = reader.nextLine()
                 .trim()
                 .chars()
