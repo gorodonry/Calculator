@@ -1,7 +1,7 @@
 import java.util.*;
 
 /**
- * Contains various methods for interpreting an input string as a mathematical expression.
+ * Contains various methods for parsing an input string as a mathematical expression.
  */
 public final class MathReader {
     public static final Map<Character, Character> brackets = Map.ofEntries(
@@ -45,7 +45,7 @@ public final class MathReader {
         );
 
         while (!remainingChars.isEmpty()) {
-            var character = remainingChars.poll();
+            char character = remainingChars.poll();
 
             if (brackets.containsKey(character)) {
                 unmatchedBrackets.push(character);
@@ -149,7 +149,7 @@ public final class MathReader {
     private static void appendNumber(List<String> partiallyFormattedExpression, double number) {
         int numberOfSections = partiallyFormattedExpression.size();
 
-        // Deal with negative numbers. Note that there is no conversion to a negative number when a minus operation
+        // Account for negative numbers. Note that there is no conversion to a negative number when a minus operation
         // occurs; i.e. when a minus is surrounded by bracket(s) and/or number(s).
         if (numberOfSections >= 2) {
             if (partiallyFormattedExpression.get(numberOfSections - 1).equals("-") &&
@@ -158,16 +158,16 @@ public final class MathReader {
                 partiallyFormattedExpression.remove(numberOfSections - 1);
             }
         } else if (numberOfSections == 1) {
-            if (partiallyFormattedExpression.get(0).equals("-")) {
+            if (partiallyFormattedExpression.getFirst().equals("-")) {
                 number *= -1;
                 partiallyFormattedExpression.clear();
             }
         }
 
-        // Check for adjacent numbers, add '*' if this occurs.
+        // Check for adjacent numbers, insert '*' between them if this occurs.
         if (!partiallyFormattedExpression.isEmpty()) {
             try {
-                Double.parseDouble(partiallyFormattedExpression.get(partiallyFormattedExpression.size() - 1));
+                Double.parseDouble(partiallyFormattedExpression.getLast());
                 partiallyFormattedExpression.add("*");
             } catch (NumberFormatException ignored) {}
         }
@@ -196,7 +196,7 @@ public final class MathReader {
 
         for (String component : input) {
             // Check for single letter constants. Note we have to check the command is currently empty because of e,
-            // which can also be found in function names such as secant. User defined constants are upper case letters.
+            //  which can also be found in function names such as secant. User defined constants are upper case letters.
             if (constants.containsKey(component) && command.isEmpty()) {
                 constants.get(component).ifPresentOrElse(
                         value -> appendNumber(partiallyFormattedExpression, value),
@@ -204,8 +204,8 @@ public final class MathReader {
                 );
             }
 
-            // Check for brackets.
-            if (brackets.contains(component)) {
+            // Check for brackets. Note that the component is guaranteed to be a string containing a single character.
+            if ((brackets.containsKey(component.charAt(0)) || brackets.containsValue(component.charAt(0)))) {
                 if (!command.isEmpty()) {
                     errorLog.add(String.format("Unrecognised command: %s", String.join("", command)));
                     command.clear();
@@ -217,13 +217,12 @@ public final class MathReader {
 
             command.add(component);
 
-            // Check for pi and ans.
+            // Check for multiple letter constants (e.g. pi and ans).
             if (constants.containsKey(String.join("", command)) && command.size() >= 2) {
                 if (constants.get(String.join("", command)).isPresent()) {
                     appendNumber(partiallyFormattedExpression, constants.get(String.join("", command)).get());
                 } else {
-                    // Note pi is always defined so will not return an empty optional.
-                    errorLog.add("No calculator history found for ans");
+                    errorLog.add(String.format("No calculator history found for %s", String.join("", command)));
                 }
 
                 command.clear();
