@@ -1,7 +1,7 @@
 /**
- * Contains various methods for when the user needs help e.g. with finding the right command, syntax, quitting, etc.
+ * Contains various methods that provide information to the user about syntax, quitting, etc.
  */
-public abstract class CHelp {
+public final class CHelp {
     /**
      * Prints out documentation of supported commands and how to use them.
      */
@@ -26,15 +26,15 @@ A simple calculator written in Java that supports standard mathematical notation
 
 --Trigonometric Functions--
 Note the default for all trigonometric functions is radians.
- -> sinx: returns the sine of x.
- -> cosx: returns the cosine of x.
- -> tanx: returns the tangent of x (x ≠ π/2).
- -> cscx: returns the cosecant of x.
- -> secx: returns the secant of x.
- -> cotx: returns the cotangent of x (x ≠ π/2).
+ -> sin(x): returns the sine of x.
+ -> cos(x): returns the cosine of x.
+ -> tan(x): returns the tangent of x (x ≠ π/2).
+ -> csc(x): returns the cosecant of x.
+ -> sec(x): returns the secant of x.
+ -> cot(x): returns the cotangent of x (x ≠ π/2).
 
 --Other Functions--
-lnx: returns the natural logarithm of x (x > 0).
+ln(x): returns the natural logarithm of x (x > 0).
 
 --Other Notes--
 Sorry for writing this in Java I'll do better next time.
