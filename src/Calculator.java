@@ -76,58 +76,19 @@ public class Calculator {
     /**
      * Runs the calculator solver with the current saved expression.
      */
-    public void runCalculator() {
+    void runCalculator() {
         if (currentExpression.contains("=")) {
-            if (currentExpression.chars().filter(c -> c == '=').count() > 1) {
-                expressionErrorMessages.add("More than one equals sign entered");
-                reportError("interpret");
-                return;
-            }
-
-            Optional<List<String>> leftHandSide = MathReader.readExpression(
-                    currentExpression.split("=")[0]
-                            .chars()
-                            .mapToObj(c -> String.valueOf((char)c))
-                            .collect(Collectors.toList()),
-                    expressionErrorMessages,
-                    constants
-            );
-
-            Optional<List<String>> rightHandSide = MathReader.readExpression(
-                    currentExpression.split("=")[1]
-                            .chars()
-                            .mapToObj(c -> String.valueOf((char)c))
-                            .collect(Collectors.toList()),
-                    expressionErrorMessages,
-                    constants
-            );
-
-            Result leftHandResult = evaluate(leftHandSide.orElseGet(ArrayList::new));
-            Result rightHandResult = evaluate(rightHandSide.orElseGet(ArrayList::new));
-
-            if (leftHandResult.successful() && rightHandResult.successful()) {
-                System.out.printf(
-                        " -> %s%n",
-                        CMath.compareDouble(
-                                leftHandResult.result().orElseThrow(),
-                                rightHandResult.result().orElseThrow()
-                        )
-                );
-            } else {
-                leftHandResult.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
-                rightHandResult.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
-                reportError("solve");
-            }
-
-            return;
+            reportComparison();
+        } else {
+            reportExpression();
         }
+    }
 
-        Optional<List<String>> interpretedExpression = MathReader.readExpression(currentExpression.chars()
-                .mapToObj(c -> String.valueOf((char)c))
-                .collect(Collectors.toList()),
-                expressionErrorMessages,
-                constants
-        );
+    /**
+     * Evaluates the expression currently saved in this class (see {@link Calculator#currentExpression}).
+     */
+    void reportExpression() {
+        Optional<List<String>> interpretedExpression = readExpression(currentExpression);
 
         if (interpretedExpression.isPresent()) {
             Result result = evaluate(interpretedExpression.get());
@@ -146,11 +107,61 @@ public class Calculator {
     }
 
     /**
+     * Evaluates whether two expressions separated by an equals sign are equal to each other. Note that the string
+     *  containing the expressions to evaluate is {@link Calculator#currentExpression}.
+     */
+    void reportComparison() {
+        if (currentExpression.chars().filter(c -> c == '=').count() > 1) {
+            expressionErrorMessages.add("More than one equals sign entered");
+            reportError("interpret");
+            return;
+        }
+
+        Optional<List<String>> leftHandSide = readExpression(currentExpression.split("=")[0]);
+        Optional<List<String>> rightHandSide = readExpression(currentExpression.split("=")[1]);
+
+        Result leftHandResult = evaluate(leftHandSide.orElseGet(ArrayList::new));
+        Result rightHandResult = evaluate(rightHandSide.orElseGet(ArrayList::new));
+
+        if (leftHandResult.successful() && rightHandResult.successful()) {
+            System.out.printf(
+                    " -> %s%n",
+                    CMath.compareDouble(
+                            leftHandResult.result().orElseThrow(),
+                            rightHandResult.result().orElseThrow()
+                    )
+            );
+        } else {
+            leftHandResult.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
+            rightHandResult.errorMessage().ifPresent(e -> expressionErrorMessages.add(e));
+            reportError("solve");
+        }
+    }
+
+    /**
+     * Attempts to parse an expression using {@link MathReader#readExpression}. Any errors encountered are
+     *  recorded in {@link Calculator#expressionErrorMessages}.
+     *
+     * @param expression the expression to read.
+     *
+     * @return a list of expression components if the parse was successful, an empty optional otherwise.
+     */
+    Optional<List<String>> readExpression(String expression) {
+        return MathReader.readExpression(
+                expression.chars()
+                        .mapToObj(c -> String.valueOf((char) c))
+                        .collect(Collectors.toList()),
+                expressionErrorMessages,
+                constants
+        );
+    }
+
+    /**
      * Reports any errors that occurred while attempting an action.
      *
      * @param failedAction the action that the error(s) occurred while attempting.
      */
-    public void reportError(String failedAction) {
+    void reportError(String failedAction) {
         System.out.printf("Failed to %s input due to the following reason(s):%n", failedAction);
 
         for (String error : expressionErrorMessages) {
@@ -169,7 +180,7 @@ public class Calculator {
      *
      * @return the answer to the expression (provided no errors arise while attempting to solve).
      */
-    public Result evaluate(List<String> expression) {
+    Result evaluate(List<String> expression) {
         // Locate and solve the contents of the rightmost opening bracket until no brackets are remaining, then solve
         //  anything that remains. Applies BEDMAS.
 
@@ -296,7 +307,7 @@ public class Calculator {
      * @param operationTypesToCompute the types of operation to compute with this particular use of the function.
      * @param partiallySolvedExpression the partially solved expression.
      */
-    private void computeBinaryOperations(
+    void computeBinaryOperations(
             Map<OperationOrder, List<Integer>> allOperationIndices,
             OperationOrder operationTypesToCompute,
             List<String> partiallySolvedExpression
@@ -358,7 +369,7 @@ public class Calculator {
      * @param completedOperationIndex the index of the operator just computed.
      * @param shuntBy the factor to shunt all known operation indices by.
      */
-    private void shuntOperationIndices(
+    void shuntOperationIndices(
             Map<OperationOrder, List<Integer>> operationsToComplete,
             int completedOperationIndex,
             int shuntBy
@@ -379,7 +390,7 @@ public class Calculator {
      *
      * @return a boolean indicating whether the read was successful (i.e. had no errors).
      */
-    public boolean readExpression() {
+    boolean readExpression() {
         System.out.print("Expression: ");
 
         currentExpression = reader.nextLine()
