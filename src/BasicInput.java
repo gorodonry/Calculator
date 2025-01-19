@@ -1,22 +1,34 @@
-import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Stream;
 
-public abstract class BasicInput {
-    public static String[] POSITIVE_ANSWERS = { "y", "yes" };
-    public static String[] VALID_ANSWERS = { "y", "yes", "n", "no" };
+/**
+ * Contains various methods for asking for basic input from users.
+ */
+public final class BasicInput {
+    public static List<String> positiveAnswers = List.of("y", "yes");
+    public static List<String> validAnswers = Stream.concat(positiveAnswers.stream(), Stream.of("n", "no")).toList();
 
+    /**
+     * Asks a binary question to the user and returns a boolean indicating their response.
+     *
+     * @param prompt the prompt for the question.
+     * @param systemInputStreamReader a scanner linked to {@link System#in} to ask the question with.
+     *
+     * @return true if they responded with yes, false if they responded with no.
+     */
     public static boolean askBinaryQuestion(String prompt, Scanner systemInputStreamReader) {
         String answer = "";
 
-        while (Arrays.stream(VALID_ANSWERS).noneMatch(answer::equals)) {
+        while (validAnswers.stream().noneMatch(answer::equals)) {
             System.out.print(prompt);
             answer = systemInputStreamReader.nextLine().trim().toLowerCase();
 
-            if (Arrays.stream(VALID_ANSWERS).noneMatch(answer::equals)) {
+            if (validAnswers.stream().noneMatch(answer::equals)) {
                 System.out.println("Pls enter either 'y' or 'n' :)");
             }
         }
 
-        return Arrays.asList(POSITIVE_ANSWERS).contains(answer);
+        return positiveAnswers.contains(answer);
     }
 }
